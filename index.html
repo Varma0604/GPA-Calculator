@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive GPA Calculator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .theme-toggle {
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: color 0.3s ease;
+        }
+
+        .dark-mode .theme-toggle {
+            color: #fff;
+        }
+
+        h1 {
+            text-align: center;
+            color: #0077FF;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .input-section, .results-section {
+            flex: 1 1 350px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #0077FF;
+            color: white;
+        }
+
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 1rem;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        button {
+            background-color: #0077FF;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #005BB5;
+        }
+
+        .chart-container {
+            width: 100%;
+            max-width: 400px;
+            margin-top: 20px;
+        }
+
+        .dark-mode {
+            background-color: #333;
+            color: #fff;
+        }
+
+        .dark-mode th {
+            background-color: #444;
+        }
+
+        .dark-mode input, .dark-mode select {
+            background-color: #555;
+            color: #fff;
+        }
+
+        .tips {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-left: 5px solid #0077FF;
+            font-size: 0.9rem;
+        }
+
+        .dark-mode .tips {
+            background-color: #444;
+        }
+
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>High School GPA Calculator</h1>
+        <span class="theme-toggle" id="toggleTheme">🌙</span>
+    </header>
+
+    <div class="container">
+        <div class="input-section">
+            <h2>Enter Your Courses</h2>
+            <table id="courseTable">
+                <thead>
+                    <tr>
+                        <th>Course</th>
+                        <th>Credits</th>
+                        <th>Grade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><input type="text" class="course" placeholder="Course name"></td>
+                        <td><input type="number" class="credits" min="1" max="5" value="3"></td>
+                        <td>
+                            <select class="grade">
+                                <option value="4">A</option>
+                                <option value="3">B</option>
+                                <option value="2">C</option>
+                                <option value="1">D</option>
+                                <option value="0">F</option>
+                            </select>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <button id="addCourse">Add Course</button>
+            <button id="calculateGPA">Calculate GPA</button>
+        </div>
+        <div class="results-section">
+            <h2>Results</h2>
+            <p>Current GPA: <span id="currentGPA">0.00</span></p>
+            <div class="chart-container">
+                <canvas id="gradeDistribution"></canvas>
+            </div>
+            <div class="tips">
+                <strong>Tip:</strong> Maintaining a high GPA can unlock scholarships and internships!
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Motivational Quote: "Success is not final, failure is not fatal: it is the courage to continue that counts." - Winston Churchill</p>
+    </footer>
+
+    <script>
+        // Toggle dark/light mode
+        const toggleTheme = document.getElementById('toggleTheme');
+        toggleTheme.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            toggleTheme.textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+        });
+
+        // Add new course row
+        const addCourse = document.getElementById('addCourse');
+        const courseTable = document.getElementById('courseTable');
+        addCourse.addEventListener('click', () => {
+            const newRow = courseTable.insertRow(-1);
+            newRow.innerHTML = `
+                <td><input type="text" class="course" placeholder="Course name"></td>
+                <td><input type="number" class="credits" min="1" max="5" value="3"></td>
+                <td>
+                    <select class="grade">
+                        <option value="4">A</option>
+                        <option value="3">B</option>
+                        <option value="2">C</option>
+                        <option value="1">D</option>
+                        <option value="0">F</option>
+                    </select>
+                </td>
+            `;
+        });
+
+        // Calculate GPA
+        const calculateGPA = document.getElementById('calculateGPA');
+        const currentGPA = document.getElementById('currentGPA');
+        let gradeDistributionChart;
+
+        calculateGPA.addEventListener('click', () => {
+            const courses = document.querySelectorAll('.course');
+            const credits = document.querySelectorAll('.credits');
+            const grades = document.querySelectorAll('.grade');
+
+            let totalCredits = 0;
+            let totalGradePoints = 0;
+            const gradeCount = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+
+            for (let i = 0; i < courses.length; i++) {
+                const credit = parseFloat(credits[i].value);
+                const grade = parseFloat(grades[i].value);
+                totalCredits += credit;
+                totalGradePoints += credit * grade;
+
+                // Count grades for distribution chart
+                if (grade === 4) gradeCount.A++;
+                else if (grade === 3) gradeCount.B++;
+                else if (grade === 2) gradeCount.C++;
+                else if (grade === 1) gradeCount.D++;
+                else gradeCount.F++;
+            }
+
+            const gpa = totalGradePoints / totalCredits;
+            currentGPA.textContent = gpa.toFixed(2);
+
+            // Update or create grade distribution chart
+            updateGradeDistributionChart(gradeCount);
+        });
+
+        function updateGradeDistributionChart(gradeCount) {
+            const ctx = document.getElementById('gradeDistribution').getContext('2d');
+            
+            if (gradeDistributionChart) {
+                gradeDistributionChart.destroy();
+            }
+
+            gradeDistributionChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['A', 'B', 'C', 'D', 'F'],
+                    datasets: [{
+                        data: [gradeCount.A, gradeCount.B, gradeCount.C, gradeCount.D, gradeCount.F],
+                        backgroundColor: ['#4CAF50', '#8BC34A', '#FFC107', '#FF9800', '#F44336']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Grade Distribution'
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>
